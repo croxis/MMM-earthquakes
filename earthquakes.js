@@ -107,23 +107,33 @@ Module.register("earthquakes", {
     },
     // Override dom generator.
     getDom: function() {
-
         var wrapper = document.createElement("canvas");
-        wrapper.style="border:1px solid #00FF00;";
+        //wrapper.style="border:1px solid #00FF00;";
         wrapper.height = wrapper.width;
-        Log.info("Width: " + wrapper.width);
-        
+        //Log.info("Width: " + wrapper.width);
         var context = wrapper.getContext("2d");
         var projection = d3.geoOrthographic().scale(wrapper.width/2).translate([wrapper.width / 2, wrapper.width / 2]);
-        Log.info("Scale: " + projection.scale);
         var path = d3.geoPath(projection, context);
+        var globe = {type: "Sphere"};
         d3.json("https://d3js.org/world-110m.v1.json", function(error, world) {
             if (error) throw error;
-            context.beginPath();
+            //context.beginPath();
             context.strokeStyle="grey";
-            Log.info("Canvas: " + Object.keys(context));
-            path(topojson.mesh(world));
-            context.stroke();
+            //Log.info("Canvas: " + Object.keys(context));
+            //var land = path(topojson.mesh(world));
+            //context.stroke();
+            var diameter = 960 / 3,
+                radius = diameter / 2,
+                velocity = 0.01;
+            d3.timer(function(elapsed) {
+                var angle = velocity * elapsed;
+                var rotate = [0, -23, 0];
+                rotate[0] = angle, projection.rotate(rotate);
+                context.clearRect(0, 0, diameter, diameter);
+                context.beginPath(), path(topojson.mesh(world)), context.stroke();
+                context.beginPath(), path(globe), context.stroke();
+                //Log.info("elasped: " + elapsed);
+            });
         });
         return wrapper;
     },
