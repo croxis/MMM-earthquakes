@@ -1,0 +1,15 @@
+.land {
+    fill: #333;
+    stroke: #555;
+    stroke-width: 1;
+  }
+
+  .earthquake {
+    fill-opacity: 0.6;
+  }
+  
+  #canvas {
+    fill: #333;
+    stroke: #555;
+    stroke-width: 1;
+  }

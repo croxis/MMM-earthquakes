@@ -114,6 +114,7 @@ Module.register("earthquakes", {
         //wrapper.style="border:1px solid #00FF00;";
         wrapper.height = wrapper.width;
         var context = wrapper.getContext("2d");
+        context.globalCompositeOperation = "lighter";
         var projection = d3.geoOrthographic().scale(wrapper.width/2).translate([wrapper.width / 2, wrapper.width / 2]);
         // Debug
         //var projection = d3.geoEquirectangular().translate([960 / 2, 480 / 2]);
@@ -134,14 +135,18 @@ Module.register("earthquakes", {
             if (error) throw error;
             context.strokeStyle="grey";
             d3.timer(function(elapsed) {
+                // Draw Earth
                 var angle = velocity * elapsed;
-                var rotate = [0, rotate, 0];
+                var rotate = [0, -23, 0];
                 rotate[0] = angle, projection.rotate(rotate);
                 context.clearRect(0, 0, diameter, diameter);
+                context.fillStyle = "#333";
+                //context.beginPath(), path(topojson.mesh(world)), context.fill(), context.stroke();
+                // Odd fill error in the above line
                 context.beginPath(), path(topojson.mesh(world)), context.stroke();
                 context.beginPath(), path(globe), context.stroke();
                
-
+                // Draw Earthquakes
                 // Radius Scale
                 
                 var rScale = d3.scaleSqrt()
@@ -154,21 +159,14 @@ Module.register("earthquakes", {
                     .domain(rScale.domain())
                     .range(['#ECD078', '#C02942']);
                 
-                this.earthquakes.forEach(function(d) {
-                    //var p = projection(d.coords)
-                    //Log.info("D: " + d)
-                    
+                this.earthquakes.forEach(function(d) {                    
                     var p = projection([d.longitude, d.latitude])
-                    //var p = [d.longitude, d.latitude]
-                    //Log.info("P: " + p)
                     var color = d3.rgb(cScale(d.magnitude))
-                    //Log.info("Color: " + color)
                     context.fillStyle = "rgba(" + [color.r, color.g, color.b, 0.2] + ")"
                     context.beginPath();
-                    context.arc(p[0], p[1], rScale(d.magnitude), 0, 2 * Math.PI)
-                    //Log.info("Dm: " + rScale(d.magnitude))
-                    //context.arc(p[0], p[1], d.magnitude, 0, 2 * Math.PI)
-                    context.stroke();
+                    context.arc(p[0], p[1], rScale(d.magnitude), 0, 2 * Math.PI);
+                    context.fill();
+                    //context.stroke();
                 });
             });
             
@@ -178,6 +176,10 @@ Module.register("earthquakes", {
     },
     getScripts: function() {
         return[this.file('d3.js'), this.file('topojson.js')]
+    },
+
+    getStyles: function() {
+        return [this.file('eqstyle.css')]
     },
 
     generateFeed: function(feeds){
