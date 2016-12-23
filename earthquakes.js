@@ -81,32 +81,36 @@ function spinning_globe(){
 
 Module.register("earthquakes", {  
     defaults: {
-        latitude: 34.2,
-        longitude: -118.1,
-        //bodies: ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']
-        bodies: {'Sun': '☉',
-                'Moon': '☽',
-            'Mercury': '☿',
-            'Venus': '♀',
-            'Mars': '♂',
-            'Jupiter': '♃',
-            'Saturn': '♄',
-        }
+        fetchInterval: 5 * 60 * 1000, // How often to fetch from USGS, which updates their feeds every five minutes
+        rotationSpeed: 0.01,
+        updateInterval: 0.1 * 60 * 1000 // How often to update from the tracker
     },
     // Define start sequence.
 	start: function() {
 		Log.info("Starting module: " + this.name);
 		// Schedule update interval.
-		var self = this;
         this.name = "earthquakes";
-		setInterval(function() {
-			self.updateDom();
-		}, 1000*60);
-        
-
+        this.earthquakes = [];
+        this.loaded = false;
+		this.sendSocketNotification("UPDATE_EARTHQUAKES", {
+        });
+        this.sendSocketNotification("GET_EARTHQUAKES", {
+        });
+    },
+    // Override socket notification handler.
+	socketNotificationReceived: function(notification, payload) {
+        Log.info("Earthquake setup");
+		if (notification === "EARTHQUAKE_ITEMS") {
+			this.generateFeed(payload);
+			if (!this.loaded) {
+				this.scheduleUpdateInterval();
+			}
+			this.loaded = true;
+		}
     },
     // Override dom generator.
     getDom: function() {
+        Log.info("Get Dom Start: " + Object.keys(this.config));
         var wrapper = document.createElement("canvas");
         //wrapper.style="border:1px solid #00FF00;";
         wrapper.height = wrapper.width;
@@ -115,16 +119,12 @@ Module.register("earthquakes", {
         var projection = d3.geoOrthographic().scale(wrapper.width/2).translate([wrapper.width / 2, wrapper.width / 2]);
         var path = d3.geoPath(projection, context);
         var globe = {type: "Sphere"};
+        var diameter = 960 / 3,
+                radius = diameter / 2,
+                velocity = this.config.rotationSpeed;
         d3.json("https://d3js.org/world-110m.v1.json", function(error, world) {
             if (error) throw error;
-            //context.beginPath();
             context.strokeStyle="grey";
-            //Log.info("Canvas: " + Object.keys(context));
-            //var land = path(topojson.mesh(world));
-            //context.stroke();
-            var diameter = 960 / 3,
-                radius = diameter / 2,
-                velocity = 0.01;
             d3.timer(function(elapsed) {
                 var angle = velocity * elapsed;
                 var rotate = [0, -23, 0];
@@ -132,13 +132,40 @@ Module.register("earthquakes", {
                 context.clearRect(0, 0, diameter, diameter);
                 context.beginPath(), path(topojson.mesh(world)), context.stroke();
                 context.beginPath(), path(globe), context.stroke();
-                //Log.info("elasped: " + elapsed);
             });
         });
         return wrapper;
     },
     getScripts: function() {
-        var self = this;
         return[this.file('d3.js'), this.file('topojson.js')]
-    }
+    },
+
+    generateFeed: function(feeds){
+        this.earthquakes = feeds;
+    },
+
+    /* scheduleUpdateInterval()
+	 * Schedule visual update.
+	 */
+	scheduleUpdateInterval: function() {
+		var self = this;
+        Log.info("Scheduling module: " + this.name);
+		//self.updateDom();
+
+		setInterval(function() {
+			self.updateDom();
+		}, this.config.updateInterval);
+
+        setInterval(function() {
+			self.sendSocketNotification("UPDATE_EARTHQUAKES", {
+            });
+		}, this.config.fetchInterval);
+
+        setInterval(function() {
+			self.sendSocketNotification("GET_EARTHQUAKES", {
+            });
+		}, this.config.updateInterval);
+    },
+
+
 });
