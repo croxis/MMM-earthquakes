@@ -81,9 +81,9 @@ function spinning_globe(){
 
 Module.register("earthquakes", {  
     defaults: {
-        fetchInterval: 5 * 60 * 1000, // How often to fetch from USGS, which updates their feeds every five minutes
+        fetchInterval: 0.5 * 60 * 1000, // How often to fetch from USGS, which updates their feeds every five minutes
         rotationSpeed: 0.01,
-        updateInterval: 0.1 * 60 * 1000 // How often to update from the tracker
+        updateInterval: 0.2 * 60 * 1000 // How often to update from the tracker
     },
     // Define start sequence.
 	start: function() {
@@ -110,30 +110,70 @@ Module.register("earthquakes", {
     },
     // Override dom generator.
     getDom: function() {
-        Log.info("Get Dom Start: " + Object.keys(this.config));
         var wrapper = document.createElement("canvas");
         //wrapper.style="border:1px solid #00FF00;";
         wrapper.height = wrapper.width;
-        //Log.info("Width: " + wrapper.width);
         var context = wrapper.getContext("2d");
         var projection = d3.geoOrthographic().scale(wrapper.width/2).translate([wrapper.width / 2, wrapper.width / 2]);
+        // Debug
+        //var projection = d3.geoEquirectangular().translate([960 / 2, 480 / 2]);
+        // End Debug
         var path = d3.geoPath(projection, context);
         var globe = {type: "Sphere"};
         var diameter = 960 / 3,
                 radius = diameter / 2,
                 velocity = this.config.rotationSpeed;
+        var rotate = -23;
+        // Debug
+        //velocity = 0;
+        //wrapper.width = 960;
+        //wrapper.height = 480;
+        //rotate = 0;
+        // End Debug
         d3.json("https://d3js.org/world-110m.v1.json", function(error, world) {
             if (error) throw error;
             context.strokeStyle="grey";
             d3.timer(function(elapsed) {
                 var angle = velocity * elapsed;
-                var rotate = [0, -23, 0];
+                var rotate = [0, rotate, 0];
                 rotate[0] = angle, projection.rotate(rotate);
                 context.clearRect(0, 0, diameter, diameter);
                 context.beginPath(), path(topojson.mesh(world)), context.stroke();
                 context.beginPath(), path(globe), context.stroke();
+               
+
+                // Radius Scale
+                
+                var rScale = d3.scaleSqrt()
+                    .domain(d3.extent(this.earthquakes, function (d) {
+                        return d.magnitude;
+                    }))
+                    .range([1, 10]);
+                
+                var cScale = d3.scaleSqrt()
+                    .domain(rScale.domain())
+                    .range(['#ECD078', '#C02942']);
+                
+                this.earthquakes.forEach(function(d) {
+                    //var p = projection(d.coords)
+                    //Log.info("D: " + d)
+                    
+                    var p = projection([d.longitude, d.latitude])
+                    //var p = [d.longitude, d.latitude]
+                    //Log.info("P: " + p)
+                    var color = d3.rgb(cScale(d.magnitude))
+                    //Log.info("Color: " + color)
+                    context.fillStyle = "rgba(" + [color.r, color.g, color.b, 0.2] + ")"
+                    context.beginPath();
+                    context.arc(p[0], p[1], rScale(d.magnitude), 0, 2 * Math.PI)
+                    //Log.info("Dm: " + rScale(d.magnitude))
+                    //context.arc(p[0], p[1], d.magnitude, 0, 2 * Math.PI)
+                    context.stroke();
+                });
             });
+            
         });
+        Log.info("Earthquakes: " + this.earthquakes.length)
         return wrapper;
     },
     getScripts: function() {
@@ -141,7 +181,7 @@ Module.register("earthquakes", {
     },
 
     generateFeed: function(feeds){
-        this.earthquakes = feeds;
+        earthquakes = feeds;
     },
 
     /* scheduleUpdateInterval()
