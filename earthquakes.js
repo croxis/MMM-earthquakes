@@ -81,9 +81,9 @@ function spinning_globe(){
 
 Module.register("earthquakes", {  
     defaults: {
-        fetchInterval: 0.5 * 60 * 1000, // How often to fetch from USGS, which updates their feeds every five minutes
+        fetchInterval: 5 * 60 * 1000, // How often to fetch from USGS, which updates their feeds every five minutes
         rotationSpeed: 0.01,
-        updateInterval: 0.2 * 60 * 1000 // How often to update from the tracker
+        updateInterval: 0.3 * 60 * 1000 // How often to update from the tracker. Need to figure out a better solution for the async nature of requests.
     },
     // Define start sequence.
 	start: function() {
